@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Brevity — AI Paragraph Summarizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #FAF9F6;
+    --bg2: #F2F0EB;
+    --surface: #FFFFFF;
+    --border: #E8E4DC;
+    --border2: #D4CFC4;
+    --text: #1A1814;
+    --muted: #8C8880;
+    --muted2: #B5B0A8;
+    --accent: #2D6A4F;
+    --accent-light: #E8F5EE;
+    --accent2: #C17F24;
+    --accent2-light: #FDF3E3;
+    --danger: #C0392B;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Geist', sans-serif;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 50;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .logo-name {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-style: italic;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-bottom: 2px;
+    display: inline-block;
+  }
+
+  .logo-tag {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .mode-toggle {
+    display: flex;
+    background: var(--bg2);
+    border-radius: 99px;
+    padding: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .mode-btn {
+    padding: 5px 14px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 5px 14px;
+    border-radius: 99px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(45,106,79,0.15);
+  }
+
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 52px);
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 14px;
+    letter-spacing: -1px;
+  }
+
+  .hero-title em { color: var(--accent); font-style: italic; }
+
+  .hero-desc {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 480px;
+    margin: 0 auto;
+    font-weight: 300;
+  }
+
+  /* ── EDITOR ── */
+  .editor-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: fadeUp 0.5s 0.1s ease both;
+    margin-bottom: 24px;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toolbar-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .char-count {
+    font-size: 12px;
+    color: var(--muted2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .char-count.warn { color: var(--accent2); }
+  .char-count.over { color: var(--danger); }
+
+  .btn-clear {
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s;
+  }
+  .btn-clear:hover { border-color: var(--border2); color: var(--text); background: var(--bg2); }
+
+  .editor-textarea {
+    width: 100%;
+    min-height: 220px;
+    padding: 24px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text);
+    background: var(--surface);
+    border: none;
+    outline: none;
+    resize: vertical;
+    max-height: 420px;
+  }
+
+  .editor-textarea::placeholder { color: var(--muted2); }
+
+  .editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .footer-options { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .option-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-body);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .option-chip:hover { border-color: var(--border2); color: var(--text); }
+  .option-chip.active {
+    background: var(--accent-light);
+    border-color: rgba(45,106,79,0.3);
+    color: var(--accent);
+  }
+
+  /* ── SUMMARIZE BTN ── */
+  .btn-summarize {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: 99px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .btn-summarize:hover { background: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(45,106,79,0.25); }
+  .btn-summarize:active { transform: scale(0.97); }
+  .btn-summarize:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-icon { font-size: 15px; transition: transform 0.3s; }
+  .btn-summarize:hover .btn-icon { transform: rotate(15deg); }
+
+  /* ── LOADING ── */
+  .loading-bar {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    display: none;
+  }
+  .loading-bar.active { display: block; }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* ── RESULT ── */
+  .result-wrap {
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+  .result-wrap.show { display: block; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .result-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 99px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .badge-green { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(45,106,79,0.2); }
+  .badge-amber { background: var(--accent2-light); color: var(--accent2); border: 1px solid rgba(193,127,36,0.2); }
+
+  .result-actions { display: flex; gap: 8px; }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-body);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .btn-action:hover { border-color: var(--border2); color: var(--text); background: var(--bg2); }
+  .btn-action.copied { background: var(--accent-light); border-color: rgba(45,106,79,0.3); color: var(--accent); }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .result-content {
+    padding: 28px;
+  }
+
+  .result-text {
+    font-family: var(--font-display);
+    font-size: 18px;
+    line-height: 1.8;
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .result-text.concise { font-size: 20px; }
+  .result-text.detailed { font-size: 16px; font-family: var(--font-body); }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--border);
+  }
+
+  .stat-cell {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .stat-cell:last-child { border-right: none; }
+
+  .stat-val {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* ── KEY POINTS ── */
+  .keypoints-wrap {
+    margin-top: 16px;
+    display: none;
+  }
+  .keypoints-wrap.show { display: block; }
+
+  .keypoints-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .kp-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .kp-list { padding: 8px 0; }
+
+  .kp-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeUp 0.3s ease both;
+  }
+  .kp-item:last-child { border-bottom: none; }
+
+  .kp-num {
+    width: 22px; height: 22px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .kp-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+  /* ── HISTORY ── */
+  .history-section {
+    margin-top: 48px;
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+  .history-section.show { display: block; }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .history-card:hover { border-color: var(--border2); box-shadow: var(--shadow); transform: translateY(-2px); }
+
+  .hc-time { font-size: 11px; color: var(--muted2); margin-bottom: 8px; }
+  .hc-original { font-size: 13px; color: var(--muted); margin-bottom: 8px; line-height: 1.5;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .hc-summary { font-family: var(--font-display); font-size: 14px; color: var(--text); line-height: 1.5;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .hc-meta { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* ── EMPTY / ERROR STATES ── */
+  .state-msg {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .state-msg .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
+  .state-msg .title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+
+  .error-banner {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 13.5px;
+    color: var(--danger);
+    display: none;
+    margin-bottom: 16px;
+    animation: fadeUp 0.3s ease;
+  }
+  .error-banner.show { display: block; }
+
+  /* ── TOOLTIP ── */
+  .tooltip-wrap { position: relative; }
+  .tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .tooltip-wrap:hover .tooltip { opacity: 1; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SKELETON ── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg2) 25%, var(--border) 50%, var(--bg2) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s infinite;
+    border-radius: 6px;
+    height: 1em;
+    margin-bottom: 10px;
+  }
+  @keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    header { padding: 18px 20px; }
+    main { padding: 28px 16px 60px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-cell:nth-child(2) { border-right: none; }
+    .editor-footer { flex-direction: column; align-items: stretch; }
+    .btn-summarize { width: 100%; justify-content: center; }
+    .result-text { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span class="logo-name">Brevity</span>
+    <span class="logo-dot"></span>
+    <span class="logo-tag">AI Summarizer</span>
+  </div>
+  <div class="header-right">
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="setMode('concise',this)">Concise</button>
+      <button class="mode-btn" onclick="setMode('balanced',this)">Balanced</button>
+      <button class="mode-btn" onclick="setMode('detailed',this)">Detailed</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <h1 class="hero-title">Turn long text into<br><em>clear insight</em></h1>
+    <p class="hero-desc">Paste any paragraph and get an intelligent summary in seconds — with key points, reading stats, and more.</p>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor-wrap">
+    <div class="editor-toolbar">
+      <div class="toolbar-left">
+        <span class="toolbar-label">Input text</span>
+      </div>
+      <div class="toolbar-right">
+        <span class="char-count" id="char-count">0 / 5000</span>
+        <button class="btn-clear" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+    <div class="loading-bar" id="loading-bar"></div>
+    <textarea
+      class="editor-textarea"
+      id="input-text"
+      placeholder="Paste your paragraph, article, or any long text here…"
+      maxlength="5000"
+      spellcheck="true"
+      oninput="onInput()"
+    ></textarea>
+    <div class="editor-footer">
+      <div class="footer-options">
+        <button class="option-chip active" id="chip-keypoints" onclick="toggleChip(this,'keypoints')">
+          🔑 Key points
+        </button>
+        <button class="option-chip" id="chip-tone" onclick="toggleChip(this,'tone')">
+          🎯 Detect tone
+        </button>
+        <button class="option-chip" id="chip-emoji" onclick="toggleChip(this,'emoji')">
+          ✨ Add emoji
+        </button>
+      </div>
+      <button class="btn-summarize" id="summarize-btn" onclick="summarize()" disabled>
+        <span class="btn-icon">◆</span>
+        Summarize
+      </button>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-banner" id="error-banner">
+    ⚠ <span id="error-text">Something went wrong. Please try again.</span>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-wrap" id="result-wrap">
+    <div class="result-header">
+      <div class="result-title">
+        Summary
+        <span class="result-badge badge-green" id="mode-badge">Balanced</span>
+        <span class="result-badge badge-amber" id="tone-badge" style="display:none"></span>
+      </div>
+      <div class="result-actions">
+        <div class="tooltip-wrap">
+          <button class="btn-action" id="copy-btn" onclick="copyResult()">⎘ Copy</button>
+          <span class="tooltip">Copy summary</span>
+        </div>
+        <div class="tooltip-wrap">
+          <button class="btn-action" onclick="downloadResult()">↓ Download</button>
+          <span class="tooltip">Save as .txt</span>
+        </div>
+        <div class="tooltip-wrap">
+          <button class="btn-action" onclick="redoSummary()">↻ Redo</button>
+          <span class="tooltip">Re-summarize</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-content">
+        <div class="result-text" id="result-text"></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-original">—</div>
+          <div class="stat-lbl">Original words</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-summary">—</div>
+          <div class="stat-lbl">Summary words</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-reduction">—</div>
+          <div class="stat-lbl">Reduction</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-read">—</div>
+          <div class="stat-lbl">Read time saved</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KEY POINTS -->
+    <div class="keypoints-wrap" id="keypoints-wrap">
+      <div class="keypoints-card">
+        <div class="kp-header">🔑 Key points</div>
+        <div class="kp-list" id="kp-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-section" id="history-section">
+    <div class="section-title">Recent summaries</div>
+    <div class="history-grid" id="history-grid"></div>
+  </div>
+</main>
+
+<script>
+// ── STATE ──
+let currentMode = 'balanced';
+let chips = { keypoints: true, tone: false, emoji: false };
+let history = [];
+let lastSummary = '';
+let lastInput = '';
+
+// ── MODE ──
+function setMode(mode, el) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── CHIP TOGGLE ──
+function toggleChip(el, key) {
+  chips[key] = !chips[key];
+  el.classList.toggle('active', chips[key]);
+}
+
+// ── INPUT ──
+function onInput() {
+  const val = document.getElementById('input-text').value;
+  const len = val.length;
+  const cc = document.getElementById('char-count');
+  cc.textContent = `${len} / 5000`;
+  cc.className = 'char-count' + (len > 4000 ? ' warn' : '') + (len > 4800 ? ' over' : '');
+  document.getElementById('summarize-btn').disabled = val.trim().length < 30;
+  hideError();
+}
+
+// ── CLEAR ──
+function clearAll() {
+  document.getElementById('input-text').value = '';
+  onInput();
+  document.getElementById('result-wrap').classList.remove('show');
+  document.getElementById('keypoints-wrap').classList.remove('show');
+  hideError();
+}
+
+// ── SUMMARIZE ──
+async function summarize() {
+  const text = document.getElementById('input-text').value.trim();
+  if (!text || text.length < 30) return;
+
+  lastInput = text;
+  setLoading(true);
+  hideError();
+  document.getElementById('result-wrap').classList.remove('show');
+  document.getElementById('keypoints-wrap').classList.remove('show');
+
+  const modeInstructions = {
+    concise: 'Write a very concise 1-2 sentence summary. Be extremely brief and punchy.',
+    balanced: 'Write a clear 2-4 sentence summary that captures the main ideas.',
+    detailed: 'Write a thorough 4-6 sentence summary covering all important points and nuances.',
+  };
+
+  const toneInstr = chips.tone
+    ? ' Also detect the overall tone/sentiment of the text (e.g. "Informative", "Persuasive", "Critical", "Optimistic") and add it at the very end prefixed with TONE: on a new line.'
+    : '';
+
+  const emojiInstr = chips.emoji
+    ? ' Add 1-2 relevant emojis naturally within the summary text.'
+    : '';
+
+  const kpInstr = chips.keypoints
+    ? '\n\nAlso extract 3-5 key points from the text. List each on a new line prefixed with "KP:" (e.g. "KP: The main finding was...").'
+    : '';
+
+  const prompt = `${modeInstructions[currentMode]}${emojiInstr}${toneInstr}${kpInstr}
+
+Text to summarize:
+"""
+${text}
+"""
+
+Respond ONLY with the summary${chips.keypoints ? ', key points' : ''}${chips.tone ? ', and tone' : ''}. No preamble or labels except KP: and TONE: prefixes.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    const raw = data.content.map(c => c.text || '').join('');
+
+    parseAndDisplay(raw, text);
+  } catch (err) {
+    showError('Could not connect to AI. Please check your connection and try again.');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function parseAndDisplay(raw, original) {
+  const lines = raw.trim().split('\n');
+  const kpLines = [];
+  let toneLine = '';
+  const summaryLines = [];
+
+  for (const line of lines) {
+    if (line.startsWith('KP:')) kpLines.push(line.replace('KP:', '').trim());
+    else if (line.startsWith('TONE:')) toneLine = line.replace('TONE:', '').trim();
+    else if (line.trim()) summaryLines.push(line.trim());
+  }
+
+  const summary = summaryLines.join(' ').trim();
+  lastSummary = summary;
+
+  // Display summary
+  const rt = document.getElementById('result-text');
+  rt.textContent = summary;
+  rt.className = 'result-text ' + currentMode;
+
+  // Mode badge
+  document.getElementById('mode-badge').textContent =
+    { concise: '⚡ Concise', balanced: '◉ Balanced', detailed: '📖 Detailed' }[currentMode];
+
+  // Tone badge
+  const tb = document.getElementById('tone-badge');
+  if (toneLine && chips.tone) {
+    tb.textContent = '🎯 ' + toneLine;
+    tb.style.display = 'inline-flex';
+  } else {
+    tb.style.display = 'none';
+  }
+
+  // Stats
+  const origWords = original.split(/\s+/).filter(Boolean).length;
+  const sumWords  = summary.split(/\s+/).filter(Boolean).length;
+  const reduction = Math.round((1 - sumWords / origWords) * 100);
+  const readRate  = 200; // avg wpm
+  const savedSec  = Math.round(((origWords - sumWords) / readRate) * 60);
+  const savedStr  = savedSec >= 60 ? `${Math.floor(savedSec/60)}m ${savedSec%60}s` : `${savedSec}s`;
+
+  document.getElementById('stat-original').textContent = origWords;
+  document.getElementById('stat-summary').textContent  = sumWords;
+  document.getElementById('stat-reduction').textContent = reduction + '%';
+  document.getElementById('stat-read').textContent      = savedStr;
+
+  document.getElementById('result-wrap').classList.add('show');
+
+  // Key points
+  if (chips.keypoints && kpLines.length) {
+    const kpList = document.getElementById('kp-list');
+    kpList.innerHTML = kpLines.map((kp, i) => `
+      <div class="kp-item" style="animation-delay:${i*0.06}s">
+        <div class="kp-num">${i + 1}</div>
+        <div class="kp-text">${kp}</div>
+      </div>`).join('');
+    document.getElementById('keypoints-wrap').classList.add('show');
+  } else {
+    document.getElementById('keypoints-wrap').classList.remove('show');
+  }
+
+  // Save to history
+  addToHistory(original, summary);
+
+  // Scroll to result
+  setTimeout(() => document.getElementById('result-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+// ── HISTORY ──
+function addToHistory(original, summary) {
+  const entry = {
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    original: original.slice(0, 120) + (original.length > 120 ? '…' : ''),
+    summary: summary.slice(0, 140) + (summary.length > 140 ? '…' : ''),
+    mode: currentMode,
+  };
+  history.unshift(entry);
+  if (history.length > 6) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  if (!history.length) return;
+  const sec = document.getElementById('history-section');
+  const grid = document.getElementById('history-grid');
+  sec.classList.add('show');
+  grid.innerHTML = history.map((h, i) => `
+    <div class="history-card" onclick="loadHistory(${i})">
+      <div class="hc-time">${h.time} · ${h.mode}</div>
+      <div class="hc-original">${h.original}</div>
+      <div class="hc-summary">${h.summary}</div>
+      <div class="hc-meta">
+        <span class="result-badge badge-green" style="font-size:10px">Summary</span>
+      </div>
+    </div>`).join('');
+}
+
+function loadHistory(i) {
+  const h = history[i];
+  document.getElementById('input-text').value = h.original.replace('…', '');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── COPY ──
+function copyResult() {
+  navigator.clipboard.writeText(lastSummary).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '⎘ Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── DOWNLOAD ──
+function downloadResult() {
+  const blob = new Blob([`ORIGINAL:\n${lastInput}\n\nSUMMARY:\n${lastSummary}`], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'brevity-summary.txt';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── REDO ──
+function redoSummary() {
+  if (lastInput) summarize();
+}
+
+// ── LOADING ──
+function setLoading(on) {
+  document.getElementById('loading-bar').classList.toggle('active', on);
+  const btn = document.getElementById('summarize-btn');
+  btn.disabled = on;
+  btn.innerHTML = on
+    ? '<span class="btn-icon" style="animation:spin 1s linear infinite;display:inline-block">◆</span> Summarizing…'
+    : '<span class="btn-icon">◆</span> Summarize';
+}
+
+// ── ERROR ──
+function showError(msg) {
+  const b = document.getElementById('error-banner');
+  document.getElementById('error-text').textContent = msg;
+  b.classList.add('show');
+}
+function hideError() {
+  document.getElementById('error-banner').classList.remove('show');
+}
+
+// ── KEYBOARD SHORTCUT ──
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    summarize();
+  }
+});
+
+// ── SPIN KEYFRAME ──
+const style = document.createElement('style');
+style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(style);
+</script>
+</body>
+</html>
